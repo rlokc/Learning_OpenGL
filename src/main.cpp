@@ -22,6 +22,8 @@ unsigned int texture1;
 unsigned int texture2;
 float mixValue = 0.5f;
 
+float screenWidth = 800;
+float screenHeight = 600;
 
 
 std::string getResource(const char *file)
@@ -56,7 +58,7 @@ int main()
         return -1;
     }
 
-    glViewport(0, 0, 800, 600);
+    glViewport(0, 0, screenWidth, screenHeight);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     Shader ourShader(getResource("src/shaders/v.glsl").c_str(), getResource("src/shaders/f.glsl").c_str());
@@ -87,8 +89,8 @@ int main()
     stbi_image_free(data);
 
 
-
-
+    //Enable depth test
+    glEnable(GL_DEPTH_TEST);
 
 
     //Render loop
@@ -99,7 +101,7 @@ int main()
 
         // render commands
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         ourShader.use();
         ourShader.setInt("texture1", 0);
@@ -107,17 +109,36 @@ int main()
         ourShader.setFloat("mixer", mixValue);
         renderTriangle();
 
-        //Transformation matrix
-        glm::vec4 vec(1.0f, 0.0f, 0.0f, 1.0f);
-        glm::mat4 trans;
-//        trans = glm::translate(trans, glm::vec3(0.3f, -0.3f, 0.0f));
-        trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
-        vec = trans * vec;
-        //Transform via transformation matrix
-        unsigned int transformLoc = glGetUniformLocation(ourShader.ID, "transform");
-        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+        //Model matrix
+        glm::mat4 model;
+        // Now with rotation!
+        model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
+        //View matrix
+        glm::mat4 view;
+        view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));         //translating in reverse direction we want to move
+        //Perspective projection matrix
+        glm::mat4 projection;
+        projection = glm::perspective(glm::radians(45.0f), screenWidth / screenHeight, 0.1f, 100.0f);
 
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        //Transformation matrix
+//        glm::vec4 vec(1.0f, 0.0f, 0.0f, 1.0f);
+//        glm::mat4 trans;
+//        trans = glm::translate(trans, glm::vec3(0.3f, -0.3f, 0.0f));
+//        trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
+//        vec = trans * vec;
+//        //Transform via transformation matrix
+//        unsigned int transformLoc = glGetUniformLocation(ourShader.ID, "transform");
+//        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+
+        //Send the matrices to the shader
+        unsigned int modelLoc = glGetUniformLocation(ourShader.ID, "model");
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        unsigned int viewLoc = glGetUniformLocation(ourShader.ID, "view");
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        unsigned int projectionLoc = glGetUniformLocation(ourShader.ID, "projection");
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+        glDrawArrays(GL_TRIANGLES, 0, 36);
 
         // check events, swap buffers
         glfwSwapBuffers(window);
@@ -131,13 +152,58 @@ int main()
 
 void renderTriangle()
 {
-    float vertices1[] = {
-        //Rectangle
-        //Positions        //Texture Coords
-         0.5f,  0.5f, 0.0f,  2.0f, 2.0f,  //Top Right
-         0.5f, -0.5f, 0.0f,  2.0f, 0.0f,  //Bottom Right
-        -0.5f, -0.5f, 0.0f,  0.0f, 0.0f,  //Bottom Left
-        -0.5f,  0.5f, 0.0f,  0.0f, 2.0f,  //Top Left
+//    float vertices1[] = {
+//        //Rectangle
+//        //Positions        //Texture Coords
+//         0.5f,  0.5f, 0.0f,  2.0f, 2.0f,  //Top Right
+//         0.5f, -0.5f, 0.0f,  2.0f, 0.0f,  //Bottom Right
+//        -0.5f, -0.5f, 0.0f,  0.0f, 0.0f,  //Bottom Left
+//        -0.5f,  0.5f, 0.0f,  0.0f, 2.0f,  //Top Left
+//    };
+
+    // A cube
+    float vertices[] = {
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
     };
 
     unsigned int indices[] = {
@@ -153,7 +219,7 @@ void renderTriangle()
     unsigned int VBO1;
     glGenBuffers(1, &VBO1);
     glBindBuffer(GL_ARRAY_BUFFER, VBO1);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices1), vertices1, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     unsigned int EBO;
     glGenBuffers(1, &EBO);
@@ -184,6 +250,8 @@ void renderTriangle()
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
+    screenHeight = height;
+    screenWidth = width;
 }
 
 
