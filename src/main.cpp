@@ -25,6 +25,19 @@ float mixValue = 0.5f;
 float screenWidth = 800;
 float screenHeight = 600;
 
+glm::vec3 cubePositions[] = {
+  glm::vec3( 0.0f,  0.0f,  0.0f),
+  glm::vec3( 2.0f,  5.0f, -15.0f),
+  glm::vec3(-1.5f, -2.2f, -2.5f),
+  glm::vec3(-3.8f, -2.0f, -12.3f),
+  glm::vec3( 2.4f, -0.4f, -3.5f),
+  glm::vec3(-1.7f,  3.0f, -7.5f),
+  glm::vec3( 1.3f, -2.0f, -2.5f),
+  glm::vec3( 1.5f,  2.0f, -2.5f),
+  glm::vec3( 1.5f,  0.2f, -1.5f),
+  glm::vec3(-1.3f,  1.0f, -1.5f)
+};
+
 
 std::string getResource(const char *file)
 {
@@ -109,10 +122,7 @@ int main()
         ourShader.setFloat("mixer", mixValue);
         renderTriangle();
 
-        //Model matrix
-        glm::mat4 model;
-        // Now with rotation!
-        model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
+
         //View matrix
         glm::mat4 view;
         view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));         //translating in reverse direction we want to move
@@ -131,14 +141,26 @@ int main()
 //        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
 
         //Send the matrices to the shader
-        unsigned int modelLoc = glGetUniformLocation(ourShader.ID, "model");
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
         unsigned int viewLoc = glGetUniformLocation(ourShader.ID, "view");
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         unsigned int projectionLoc = glGetUniformLocation(ourShader.ID, "projection");
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        for (int i = 0; i < 10; i++)
+        {
+            //Model matrix, unique per box
+            glm::mat4 model;
+            model = glm::translate(model, cubePositions[i]);
+            float angle = 20.0f * (i+1);
+            if (i%2 == 0)
+                angle = cos((float)glfwGetTime()) * angle;
+            else
+                angle = sin((float)glfwGetTime()) * angle;
+            model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.2f, 0.5f));
+            ourShader.setMat4("model", model);
+
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
 
         // check events, swap buffers
         glfwSwapBuffers(window);
